@@ -167,11 +167,31 @@
   }
   .board {
     --cell: min(40px, calc((100vw - 32px) / var(--cols)));
+    position: relative;
     display: grid;
     grid-template-columns: repeat(var(--cols), var(--cell));
     grid-template-rows: repeat(var(--rows), var(--cell));
     user-select: none;
     -webkit-user-select: none;
+  }
+  .grid-lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+    pointer-events: none;
+    z-index: 2;
+    overflow: visible;
+  }
+  .grid-lines path {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 1px;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+    vector-effect: non-scaling-stroke;
   }
   .cell {
     position: relative;
@@ -180,7 +200,6 @@
   }
   .cell.open {
     background: var(--cell-bg);
-    box-shadow: inset 0 0 0 1px var(--line);
     pointer-events: auto;
     cursor: pointer;
     touch-action: manipulation;
@@ -211,7 +230,7 @@
     text-transform: uppercase;
   }
   .cell.in-word { background: var(--word); }
-  .cell.selected { background: var(--sel); z-index: 1; box-shadow: inset 0 0 0 2px var(--ink); }
+  .cell.selected { background: var(--sel); z-index: 1; outline: 2px solid var(--ink); outline-offset: -2px; }
   .cell.wrong { background: var(--wrong-bg); color: var(--wrong); }
   .cell.wrong.in-word { background: #f1c4a8; }
   .cell.wrong.selected { background: #e8b84a; }
@@ -332,7 +351,8 @@
     .wrap { max-width: none; padding: 0; }
     header.page-head { margin-bottom: 16px; }
     .cell .glyph { display: none !important; }
-    .cell.in-word, .cell.selected, .cell.wrong { background: #fff !important; color: #000 !important; box-shadow: inset 0 0 0 1px #000 !important; }
+    .cell.in-word, .cell.selected, .cell.wrong { background: #fff !important; color: #000 !important; box-shadow: none !important; outline: none !important; }
+    .grid-lines path { stroke: #000; stroke-width: 0.8pt; }
     .clues li.active, .clues li:hover { background: transparent !important; }
     .clues li.filled .t { opacity: 1; text-decoration: none !important; }
     .play { display: block !important; }
@@ -761,6 +781,35 @@ const P = {"title":"All About Melina","subtitle":"Love, Finn","rows":17,"cols":1
       cellEls[nk] = el;
     }
   }
+
+  // Draw each grid edge exactly once so crossings are not thicker.
+  (function drawGridLines() {
+    function isDrawn(r, c) {
+      if (r < 0 || r >= rows || c < 0 || c >= cols) return false;
+      return !!(open[r][c] || P.black);
+    }
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "grid-lines");
+    svg.setAttribute("id", "grid-lines");
+    svg.setAttribute("viewBox", "0 0 " + cols + " " + rows);
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("aria-hidden", "true");
+    const parts = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (!isDrawn(r, c)) continue;
+        parts.push("M" + c + " " + r + "h1");
+        parts.push("M" + c + " " + r + "v1");
+        if (!isDrawn(r + 1, c)) parts.push("M" + c + " " + (r + 1) + "h1");
+        if (!isDrawn(r, c + 1)) parts.push("M" + (c + 1) + " " + r + "v1");
+      }
+    }
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", parts.join(""));
+    path.setAttribute("vector-effect", "non-scaling-stroke");
+    svg.appendChild(path);
+    boardEl.appendChild(svg);
+  })();
 
   // Clue lists
   const cluesRoot = $("clues");

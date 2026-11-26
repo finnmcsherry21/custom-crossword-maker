@@ -269,13 +269,24 @@ def draw_header(cv, title, subtitle, y):
 
 
 def draw_grid(cv, grid, numbers, top_y, max_h, fill_letters):
-    """Draw the grid centred horizontally below top_y. Returns bottom y."""
+    """Draw the grid centred horizontally below top_y. Returns bottom y.
+
+    Each shared edge is stroked exactly once so internal walls and crossings
+    have the same line thickness as outer edges.
+    """
     rows, cols = len(grid), len(grid[0])
     cell = min((PAGE_W - 2 * MARGIN) / cols, max_h / rows, 30)
     gw, gh = cell * cols, cell * rows
     x0 = (PAGE_W - gw) / 2
     y_top = top_y
-    cv.setLineWidth(0.8)
+    line_w = 0.8
+
+    def is_drawn(r, c):
+        if r < 0 or r >= rows or c < 0 or c >= cols:
+            return False
+        return grid[r][c] is not None or SHOW_BLACK_SQUARES
+
+    # Fill first with no stroke — stroking every rect would double shared edges.
     for r in range(rows):
         for c in range(cols):
             x = x0 + c * cell
@@ -284,11 +295,45 @@ def draw_grid(cv, grid, numbers, top_y, max_h, fill_letters):
             if ch is None:
                 if SHOW_BLACK_SQUARES:
                     cv.setFillGray(0)
-                    cv.rect(x, y, cell, cell, stroke=1, fill=1)
+                    cv.rect(x, y, cell, cell, stroke=0, fill=1)
                 continue
             cv.setFillGray(1)
-            cv.rect(x, y, cell, cell, stroke=1, fill=1)
-            cv.setFillGray(0)
+            cv.rect(x, y, cell, cell, stroke=0, fill=1)
+
+    cv.setStrokeGray(0)
+    cv.setFillGray(0)
+    cv.setLineWidth(line_w)
+    cv.setLineCap(0)   # butt — no extra length at corners
+    cv.setLineJoin(0)
+    path = cv.beginPath()
+    for r in range(rows):
+        for c in range(cols):
+            if not is_drawn(r, c):
+                continue
+            x = x0 + c * cell
+            y = y_top - (r + 1) * cell  # bottom-left of the cell
+            # Always stroke this cell's top and left. Stroke bottom/right
+            # only when there is no neighbour, so each shared edge is
+            # drawn exactly once.
+            path.moveTo(x, y + cell)
+            path.lineTo(x + cell, y + cell)
+            path.moveTo(x, y)
+            path.lineTo(x, y + cell)
+            if not is_drawn(r + 1, c):
+                path.moveTo(x, y)
+                path.lineTo(x + cell, y)
+            if not is_drawn(r, c + 1):
+                path.moveTo(x + cell, y)
+                path.lineTo(x + cell, y + cell)
+    cv.drawPath(path, stroke=1, fill=0)
+
+    for r in range(rows):
+        for c in range(cols):
+            ch = grid[r][c]
+            if ch is None:
+                continue
+            x = x0 + c * cell
+            y = y_top - (r + 1) * cell
             if (r, c) in numbers:
                 cv.setFont("Helvetica", max(5, cell * 0.28))
                 cv.drawString(x + cell * 0.07, y + cell * 0.70, str(numbers[(r, c)]))
@@ -572,11 +617,31 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   }
   .board {
     --cell: min(40px, calc((100vw - 32px) / var(--cols)));
+    position: relative;
     display: grid;
     grid-template-columns: repeat(var(--cols), var(--cell));
     grid-template-rows: repeat(var(--rows), var(--cell));
     user-select: none;
     -webkit-user-select: none;
+  }
+  .grid-lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+    pointer-events: none;
+    z-index: 2;
+    overflow: visible;
+  }
+  .grid-lines path {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 1px;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+    vector-effect: non-scaling-stroke;
   }
   .cell {
     position: relative;
@@ -585,7 +650,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   }
   .cell.open {
     background: var(--cell-bg);
-    box-shadow: inset 0 0 0 1px var(--line);
     pointer-events: auto;
     cursor: pointer;
     touch-action: manipulation;
@@ -616,7 +680,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     text-transform: uppercase;
   }
   .cell.in-word { background: var(--word); }
-  .cell.selected { background: var(--sel); z-index: 1; box-shadow: inset 0 0 0 2px var(--ink); }
+  .cell.selected { background: var(--sel); z-index: 1; outline: 2px solid var(--ink); outline-offset: -2px; }
   .cell.wrong { background: var(--wrong-bg); color: var(--wrong); }
   .cell.wrong.in-word { background: #f1c4a8; }
   .cell.wrong.selected { background: #e8b84a; }
@@ -737,7 +801,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .wrap { max-width: none; padding: 0; }
     header.page-head { margin-bottom: 16px; }
     .cell .glyph { display: none !important; }
-    .cell.in-word, .cell.selected, .cell.wrong { background: #fff !important; color: #000 !important; box-shadow: inset 0 0 0 1px #000 !important; }
+    .cell.in-word, .cell.selected, .cell.wrong { background: #fff !important; color: #000 !important; box-shadow: none !important; outline: none !important; }
+    .grid-lines path { stroke: #000; stroke-width: 0.8pt; }
     .clues li.active, .clues li:hover { background: transparent !important; }
     .clues li.filled .t { opacity: 1; text-decoration: none !important; }
     .play { display: block !important; }
@@ -1166,6 +1231,35 @@ const P = __PUZZLE_JSON__;
       cellEls[nk] = el;
     }
   }
+
+  // Draw each grid edge exactly once so crossings are not thicker.
+  (function drawGridLines() {
+    function isDrawn(r, c) {
+      if (r < 0 || r >= rows || c < 0 || c >= cols) return false;
+      return !!(open[r][c] || P.black);
+    }
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "grid-lines");
+    svg.setAttribute("id", "grid-lines");
+    svg.setAttribute("viewBox", "0 0 " + cols + " " + rows);
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("aria-hidden", "true");
+    const parts = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (!isDrawn(r, c)) continue;
+        parts.push("M" + c + " " + r + "h1");
+        parts.push("M" + c + " " + r + "v1");
+        if (!isDrawn(r + 1, c)) parts.push("M" + c + " " + (r + 1) + "h1");
+        if (!isDrawn(r, c + 1)) parts.push("M" + (c + 1) + " " + r + "v1");
+      }
+    }
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", parts.join(""));
+    path.setAttribute("vector-effect", "non-scaling-stroke");
+    svg.appendChild(path);
+    boardEl.appendChild(svg);
+  })();
 
   // Clue lists
   const cluesRoot = $("clues");

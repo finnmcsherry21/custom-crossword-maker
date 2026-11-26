@@ -999,6 +999,24 @@ const P = __PUZZLE_JSON__;
     try { kb.setSelectionRange(0, kb.value.length); } catch (e) {}
   }
 
+  function clearSelection() {
+    cur = null;
+    renderAll();
+    try { kb.blur(); } catch (e) {}
+  }
+
+  function isKeepSelectionTarget(el) {
+    if (!el || !el.closest) return false;
+    if (el === kb || el.id === "kb") return true;
+    if (el.closest(".clues")) return true;
+    if (el.closest(".tools")) return true;
+    if (el.closest(".clue-bar")) return true;
+    if (el.closest(".modal")) return true;
+    const cell = el.closest(".cell.open");
+    if (cell && !cell.classList.contains("black")) return true;
+    return false;
+  }
+
   function selectCell(r, c, dir) {
     if (!open[r] || !open[r][c]) return;
     const here = wordsAt(r, c);
@@ -1336,6 +1354,12 @@ const P = __PUZZLE_JSON__;
     document.querySelectorAll("details.menu").forEach((d) => {
       if (!d.contains(e.target)) d.open = false;
     });
+  });
+  document.addEventListener("pointerdown", (e) => {
+    // Clicks on the page background or empty/black grid squares
+    // clear the highlight and dismiss the keyboard.
+    if (isKeepSelectionTarget(e.target)) return;
+    clearSelection();
   });
   window.addEventListener("resize", placeKb);
   window.addEventListener("scroll", placeKb, { passive: true });

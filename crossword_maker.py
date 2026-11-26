@@ -19,25 +19,29 @@ Tip: if you don't like the layout, just run again (or try a different --seed).
 # ============================  CONFIG - EDIT ME  =============================
 # =============================================================================
 
-TITLE = "All About Mom"
-SUBTITLE = "Merry Christmas, Mom! Love, Finn"      # dedication line (or "")
+TITLE = "All About Melina"
+SUBTITLE = "Love, Finn"      # dedication line (or "")
 
 # (ANSWER, CLUE) pairs. Answers can include spaces / punctuation; they're
 # stripped for the grid ("SAN LUIS OBISPO" -> SANLUISOBISPO).
 # Aim for 10-25 words. Longer lists with shared letters interlock best.
+# Many of these come from the Melina Strands puzzles; a few are general.
 WORDS = [
-    ("SAN LUIS OBISPO", "City where Mom went to college"),
-    ("LASAGNA",         "Her famous Sunday dinner"),
-    ("GOLDEN RETRIEVER","Breed of our first family dog"),
-    ("HAWAII",          "Where she and Dad honeymooned"),
-    ("GARDENING",       "Her favorite way to spend a Saturday morning"),
-    ("PINOT NOIR",      "Her go-to glass of wine"),
-    ("TEACHER",         "Her job for over twenty years"),
-    ("BEATLES",         "Band she always plays in the car"),
-    ("SUNFLOWER",       "Her favorite flower"),
-    ("CROSSWORD",       "What she does every morning with coffee (like this one!)"),
-    ("PANCAKES",        "Birthday breakfast tradition"),
-    ("ITALY",           "Dream trip on her bucket list"),
+    ("MELINA",         "The 'I love _____' at the heart of the first Strands puzzle"),
+    ("BEAUTIFUL",      "One of the things I love about you"),
+    ("LAVA CAKE",      "Sweet-tooth dessert, promised with vanilla ice cream"),
+    ("HARIBO",         "Gummy brand in Melina's sweet tooth puzzle"),
+    ("LICORICE",       "Chewy candy from Melina's sweet tooth"),
+    ("THAI TEA",       "Iced drink on the 'Sip sip hooray!' list"),
+    ("JAGER BOMB",     "Shot from 'Sip sip hooray!,' promised with lavender vanilla lattes"),
+    ("DOUBLE DOUBLE",  "In-N-Out order that's the spangram of 'Order like Melina'"),
+    ("IN N OUT",       "Burger chain in 'Order like Melina'"),
+    ("COKE ZERO",      "Her drink that's '2/3 Diet Coke, 1/3 Coke,' but actually this"),
+    ("WATERMELON",     "Fruit that's 'on top' in the juicy Strands puzzle"),
+    ("SCALLOPS",       "Seafood from the dinner date puzzle"),
+    ("CROSSWORD",      "Printable puzzle like this one"),
+    ("STRANDS",        "Word game this puzzle borrows its theme words from"),
+    ("FINN",           "Name signed on every Strands win screen"),
 ]
 
 SHOW_WORD_LENGTHS = True    # adds "(3,4,6)" after multi-word clues, "(7)" otherwise
